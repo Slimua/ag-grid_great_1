@@ -277,9 +277,7 @@ export const Changelog = () => {
     );
 
     return (
-        <div className={classnames('page-margin', styles.container)}>
-            <h1>AG Grid Changelog</h1>
-
+        <div>
             <section className={styles.header}>
                 <Alert type="idea">
                     This changelog enables you to identify the specific version in which a feature request or bug fix
