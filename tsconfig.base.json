@@ -20,7 +20,6 @@
     "noImplicitAny": true,
     "noUnusedLocals": false,
     "noImplicitOverride": true,
-    "noEmit": true,
     "paths": {
       "@ag-grid-community/client-side-row-model": ["community-modules/client-side-row-model/src/main.ts"],
       "@ag-grid-community/core": ["community-modules/core/src/main.ts"],

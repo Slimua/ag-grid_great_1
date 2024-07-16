@@ -2,6 +2,7 @@ import { join } from 'path';
 
 import type { Param } from '../../src/GENERATED-param-types';
 import { ThemeUnit } from '../../src/ThemeUnit';
+import { coreDefaults } from '../../src/parts/core/core-part';
 import { getParamType } from '../../src/theme-types';
 import type { ParamType, Part } from '../../src/theme-types';
 import { DEV_MODE, fatalError, getProjectDir, writeTsFile } from './utils';
@@ -35,7 +36,9 @@ export const generateDocsFile = async () => {
         }
     }
 
-    for (const unit of exportedUnits) {
+    const allUnits = flattenUnits(exportedUnits);
+
+    for (const unit of allUnits) {
         try {
             getPartParams(unit).forEach(getParamType);
         } catch (e: any) {
@@ -43,7 +46,9 @@ export const generateDocsFile = async () => {
         }
     }
 
-    const allParams = Array.from(new Set<string>(Array.from(exportedUnits).flatMap(getPartParams))).sort();
+    const allParams = Array.from(
+        new Set<string>(Array.from(allUnits).flatMap(getPartParams).concat(Object.keys(coreDefaults)))
+    ).sort();
 
     const allParamsSet = new Set(allParams);
     const superfluousParamDocs = getParamDocsKeys().filter((p) => !allParamsSet.has(p));
@@ -89,6 +94,18 @@ export const generateDocsFile = async () => {
     }
 
     await writeTsFile(join(getProjectDir(), 'GENERATED-param-types.ts'), result);
+};
+
+const flattenUnits = (units: ThemeUnit[]): ThemeUnit[] => {
+    const all: ThemeUnit[] = [];
+    const accumulate = (a: readonly ThemeUnit[]) => {
+        for (const unit of a) {
+            all.push(unit);
+            accumulate(unit.dependencies);
+        }
+    };
+    accumulate(units);
+    return Array.from(new Set(all));
 };
 
 const fatalErrorInProdOnly = (message: string) => {
