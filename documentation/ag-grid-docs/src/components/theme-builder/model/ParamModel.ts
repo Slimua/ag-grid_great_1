@@ -14,7 +14,7 @@ import { atomWithJSONStorage } from './JSONStorage';
 import type { Store } from './store';
 import { memoize, titleCase } from './utils';
 
-const paramModels: Record<string, ParamModel> = {};
+const paramModels: Record<string, unknown> = {};
 
 // Params that are editable in the UI immediately without adding as an advanced param
 const nonAdvancedParams = new Set([
@@ -44,15 +44,15 @@ const nonAdvancedParams = new Set([
     'iconSize',
 ]);
 
-export class ParamModel {
+export class ParamModel<T> {
     readonly label: string;
     readonly docs: string;
     readonly type: ParamType;
-    readonly valueAtom: PersistentAtom<any>;
+    readonly valueAtom: PersistentAtom<T | undefined>;
 
     private constructor(readonly property: string) {
         this.label = titleCase(property);
-        this.valueAtom = atomWithJSONStorage(`param.${property}`, undefined);
+        this.valueAtom = atomWithJSONStorage<T | undefined>(`param.${property}`, undefined);
         this.docs = getParamDocs(property) || '';
         this.type = getParamType(property);
     }
@@ -63,17 +63,20 @@ export class ParamModel {
         return !nonAdvancedParams.has(this.property);
     }
 
-    static for(property: string | ParamModel) {
+    static for<T>(property: string | ParamModel<T>): ParamModel<T> {
         if (property instanceof ParamModel) {
             return property;
         }
-        return paramModels[property] || (paramModels[property] = new ParamModel(property));
+        if (!paramModels[property]) {
+            paramModels[property] = new ParamModel<T>(property);
+        }
+        return paramModels[property] as ParamModel<T>;
     }
 }
 
-export const useParamAtom = (model: ParamModel) => useAtom(model.valueAtom);
+export const useParamAtom = <T>(model: ParamModel<T>) => useAtom(model.valueAtom);
 
-export const useParam = (model: ParamModel) => useAtomValue(model.valueAtom);
+export const useParam = <T>(model: ParamModel<T>) => useAtomValue(model.valueAtom);
 
 // Suppress properties that we don't want to be discoverable in the theme builder:
 //

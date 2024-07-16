@@ -1,7 +1,7 @@
 import { Provider } from 'jotai';
 import { useLayoutEffect, useMemo, useState } from 'react';
 
-import { PreloadFontSelection } from './components/editors/FontFamilyValueEditor';
+import { LoadFontFamilyMenuFonts } from './components/editors/FontFamilyValueEditor';
 import { RootContainer } from './components/general/RootContainer';
 import { WelcomeModal } from './components/general/WelcomeModal';
 import { applyPreset, darkModePreset, lightModePreset } from './components/presets/presets';
@@ -43,7 +43,7 @@ export const ThemeBuilder = () => {
 
     return (
         <Provider store={store}>
-            <PreloadFontSelection />
+            <LoadFontFamilyMenuFonts />
             {initialised && <RootContainer />}
             <WelcomeModal />
         </Provider>

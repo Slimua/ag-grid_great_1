@@ -1,4 +1,3 @@
-import { paramValueToCss } from '@ag-grid-community/theming';
 import { Checkmark, ChevronDown } from '@carbon/icons-react';
 import { ParamModel, useParamAtom } from '@components/theme-builder/model/ParamModel';
 import { useRenderedTheme } from '@components/theme-builder/model/rendered-theme';
@@ -17,9 +16,9 @@ const borders = {
 };
 
 export const BordersEditor = withErrorBoundary(() => {
-    const theme = useRenderedTheme();
+    const params = useRenderedTheme().getParams();
     const selectedBorders = Object.entries(borders)
-        .filter(([param]) => borderIsEnabled(param, theme.getRenderedParams()[param]))
+        .filter(([param]) => !!params[param])
         .map(([, label]) => label);
 
     return (
@@ -68,7 +67,8 @@ const BorderItem = (props: BorderProps) => {
         }
     }
 
-    const checked = borderIsEnabled(props.param, editorValue);
+    // TODO use object format
+    const checked = !!editorValue;
 
     return (
         <StyledItem
@@ -85,9 +85,6 @@ const BorderItem = (props: BorderProps) => {
         </StyledItem>
     );
 };
-
-const borderIsEnabled = (param: string, value: string) =>
-    typeof value === 'boolean' ? value : paramValueToCss(param, false) !== value;
 
 const StyledTrigger = SharedTrigger.withComponent(RadixDropdown.Trigger);
 const StyledContent = SharedContent.withComponent(RadixDropdown.Content);

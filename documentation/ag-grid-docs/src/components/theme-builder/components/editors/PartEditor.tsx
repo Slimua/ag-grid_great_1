@@ -1,4 +1,3 @@
-import type { PartId } from '@ag-grid-community/theming';
 import { Select } from '@ag-website-shared/components/select/Select';
 
 import type { VariantModel } from '../../model/PartModel';
@@ -7,11 +6,11 @@ import { withErrorBoundary } from '../general/ErrorBoundary';
 import { FormField } from './FormField';
 
 export type VariantSelectorProps = {
-    part: PartId;
+    partId: string;
 };
 
 export const PartEditor = withErrorBoundary((props: VariantSelectorProps) => {
-    const part = PartModel.for(props.part);
+    const part = PartModel.for(props.partId);
     const [variant, setVariant] = useSelectedVariant(part);
     return (
         <FormField label={part.label} docs={part.docs}>
