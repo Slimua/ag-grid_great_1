@@ -338,3 +338,5 @@ export const coreDefaults = {
 } satisfies Partial<ParamTypes>;
 
 export type CoreParam = keyof typeof coreDefaults;
+
+export const coreParams = Object.keys(coreDefaults) as CoreParam[];

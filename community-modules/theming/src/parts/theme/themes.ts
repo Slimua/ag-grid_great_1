@@ -22,9 +22,10 @@ export const themeBalham =
         .usePart(tabStyleRolodex)
         .usePart(inputStyleBordered)
         .overrideParams({
+            gridSize: 4,
             borderRadius: 2,
             wrapperBorderRadius: 2,
-            headerColumnResizeHandleColor: { ref: 'borderColor' },
+            headerColumnResizeHandleColor: 'transparent',
             headerColumnBorder: true,
             headerColumnBorderHeight: '50%',
             oddRowBackgroundColor: {
@@ -38,12 +39,10 @@ export const themeBalham =
             fontFamily:
                 '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif',
             fontSize: 12,
+            headerFontWeight: 'bold'
         })
         .addCss(
             `
-            .ag-header {
-                font-weight: bold;
-            }
             .ag-filter-toolpanel-group-level-0-header {
                 background-color: color-mix(in srgb, transparent, var(--ag-foreground-color) 7%);
                 border-top: 1px solid var(--ag-border-color);

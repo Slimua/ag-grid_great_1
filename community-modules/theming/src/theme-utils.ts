@@ -14,13 +14,6 @@ export const logErrorMessage = (message: unknown, error?: unknown) => {
     }
 };
 
-const loggedMessages = new Set<string>();
-export const logErrorMessageOnce = (message: string, error?: unknown) => {
-    if (loggedMessages.has(message)) return;
-    loggedMessages.add(message);
-    console.error(message, error);
-};
-
 export const proportionToPercent = (value: number) => Math.round(Math.max(0, Math.min(1, value)) * 1000) / 10;
 
 export const camelCase = (str: string) => str.replace(/[\W_]+([a-z])/g, (_, letter) => letter.toUpperCase());

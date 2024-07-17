@@ -1,4 +1,4 @@
-import { Theme, inputStyleBordered, tabStyleQuartz } from '@ag-grid-community/theming';
+import { inputStyleBordered, tabStyleQuartz } from '@ag-grid-community/theming';
 import { atom, useAtomValue, useSetAtom } from 'jotai';
 
 import { allParamModels } from './ParamModel';

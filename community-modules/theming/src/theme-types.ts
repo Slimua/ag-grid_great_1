@@ -1,3 +1,5 @@
+import { _errorOnce } from '@ag-grid-community/core';
+
 import type {
     BorderParam,
     ColorParam,
@@ -11,7 +13,7 @@ import type {
 } from './GENERATED-param-types';
 import { ThemeUnit } from './ThemeUnit';
 import type { CoreParam } from './parts/core/core-part';
-import { clamp, logErrorMessageOnce, memoize, paramToVariableExpression } from './theme-utils';
+import { clamp, memoize, paramToVariableExpression } from './theme-utils';
 
 export type CssFragment = string | (() => string);
 
@@ -84,22 +86,34 @@ export type Theme<T extends Param = never> = {
      * Only one theme can be installed at a time. Calling this method will
      * replace any previously installed theme.
      */
-
     install(args?: ThemeInstallArgs): Promise<void>;
+
+    /**
+     * Return the complete rendered CSS for this theme. This can be used at
+     * build time to generate CSS if your application requires that CSS be
+     * served from a static file.
+     */
+    getCSS(args?: ThemeRenderArgs): string;
 
     /**
      * Return the params used to render the theme, taking into account default
      * values and any overrides provided
      */
     getParams(): Partial<ParamTypes>;
-
-    /**
-     * Return the complete rendered CSS for this theme.
-     */
-    getCSS(): string;
 };
 
-export type ThemeInstallArgs = {
+export type ThemeRenderArgs = {
+    /**
+     * Whether to load supported fonts from the Google Fonts server.
+     *
+     * - `true` -> load fonts automatically if your theme uses them
+     * - `false` -> do not load fonts, you must either load them from Google Fonts
+     *   yourself or download them and serve them from your app
+     */
+    loadGoogleFonts?: boolean;
+};
+
+export type ThemeInstallArgs = ThemeRenderArgs & {
     /**
      * The container that the grid is rendered within. If the grid is rendered
      * inside a shadow DOM root, you must pass the grid's parent element to
@@ -362,7 +376,7 @@ const durationValueToCss = (value: DurationValue, param: string): string | false
     if (typeof value === 'string') return value;
     if (typeof value === 'number') {
         if (value > 50) {
-            logErrorMessageOnce(
+            _errorOnce(
                 `Numeric value ${value} passed to ${param} param will be interpreted as ${value} seconds. If this is intentional use "${value}s" to silence this warning.`
             );
         }

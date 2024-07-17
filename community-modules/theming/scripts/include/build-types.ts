@@ -2,7 +2,7 @@ import { join } from 'path';
 
 import type { Param } from '../../src/GENERATED-param-types';
 import { ThemeUnit } from '../../src/ThemeUnit';
-import { coreDefaults } from '../../src/parts/core/core-part';
+import { coreParams } from '../../src/parts/core/core-part';
 import { getParamType } from '../../src/theme-types';
 import type { ParamType, Part } from '../../src/theme-types';
 import { DEV_MODE, fatalError, getProjectDir, writeTsFile } from './utils';
@@ -47,7 +47,7 @@ export const generateDocsFile = async () => {
     }
 
     const allParams = Array.from(
-        new Set<string>(Array.from(allUnits).flatMap(getPartParams).concat(Object.keys(coreDefaults)))
+        new Set<string>(Array.from(allUnits).flatMap(getPartParams).concat(coreParams))
     ).sort();
 
     const allParamsSet = new Set(allParams);

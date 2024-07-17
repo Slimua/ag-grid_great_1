@@ -1,9 +1,11 @@
+import { _errorOnce, _warnOnce } from '@ag-grid-community/core';
+
 import type { Param, ParamTypes } from './GENERATED-param-types';
 import { coreCSS, coreDefaults } from './parts/core/core-part';
 import type { CoreParam } from './parts/core/core-part';
 import { paramValueToCss } from './theme-types';
-import type { CssFragment, ParamDefaults, ThemeInstallArgs } from './theme-types';
-import { logErrorMessageOnce, paramToVariableName } from './theme-utils';
+import type { CssFragment, ParamDefaults, ThemeInstallArgs, ThemeRenderArgs } from './theme-types';
+import { paramToVariableName } from './theme-utils';
 
 export class ThemeUnit<T extends Param = never> {
     constructor(
@@ -44,8 +46,8 @@ export class ThemeUnit<T extends Param = never> {
         return this.overrideParams(defaults as any) as any;
     }
 
-    getCSS(): string {
-        return this._getCSSChunks()
+    getCSS(args: ThemeRenderArgs): string {
+        return this._getCSSChunks(args, 'getCSS')
             .map((chunk) => chunk.css)
             .join('\n\n');
     }
@@ -61,7 +63,7 @@ export class ThemeUnit<T extends Param = never> {
             container = document.querySelector('head');
             if (!container) throw new Error("Can't install theme before document head is created");
         }
-        const chunks = this._getCSSChunks();
+        const chunks = this._getCSSChunks(args, 'install');
         const activeChunkIds = new Set(chunks.map((chunk) => chunk.id));
         const existingStyles = Array.from(
             container.querySelectorAll(':scope > [data-ag-injected-style-id]')
@@ -121,14 +123,22 @@ export class ThemeUnit<T extends Param = never> {
     }
 
     private _getCssChunksCache?: ThemeCssChunk[];
-    private _getCSSChunks(): ThemeCssChunk[] {
+    private _getCSSChunks({ loadGoogleFonts }: ThemeRenderArgs, method: string): ThemeCssChunk[] {
         if (this._getCssChunksCache) return this._getCssChunksCache;
 
         const chunks: ThemeCssChunk[] = [];
 
         const googleFontsChunk = makeGoogleFontsChunk(this);
         if (googleFontsChunk) {
-            chunks.push(googleFontsChunk);
+            if (loadGoogleFonts) {
+                chunks.push(googleFontsChunk);
+            } else if (loadGoogleFonts == null) {
+                getGoogleFontsUsed(this).forEach((font) =>
+                    _warnOnce(
+                        `${this.id} uses google font ${font} but no value for loadGoogleFonts was passed to theme.${method}(). Pass true to load fonts from ${googleFontsDomain} or false to silence this warning.`
+                    )
+                );
+            }
         }
 
         chunks.push(makeVariablesChunk(this));
@@ -154,7 +164,7 @@ const makeVariablesChunk = (theme: ThemeUnit): ThemeCssChunk => {
     for (const [name, value] of Object.entries(theme.getParams())) {
         const rendered = paramValueToCss(name, value);
         if (rendered === false) {
-            logErrorMessageOnce(`Invalid value for param ${name} - ${describeValue(value)}`);
+            _errorOnce(`Invalid value for param ${name} - ${describeValue(value)}`);
         } else if (rendered) {
             renderedParams[name] = rendered;
         }
@@ -173,7 +183,7 @@ const makeVariablesChunk = (theme: ThemeUnit): ThemeCssChunk => {
     };
 };
 
-const makeGoogleFontsChunk = (theme: ThemeUnit): ThemeCssChunk | null => {
+const getGoogleFontsUsed = (theme: ThemeUnit): string[] => {
     const googleFonts = new Set<string>();
     for (const value of Object.values(theme.getParams())) {
         const googleFont = value && (value as any).googleFont;
@@ -181,18 +191,25 @@ const makeGoogleFontsChunk = (theme: ThemeUnit): ThemeCssChunk | null => {
             googleFonts.add(googleFont);
         }
     }
-    return googleFonts.size > 0
+    return Array.from(googleFonts).sort();
+};
+
+const makeGoogleFontsChunk = (theme: ThemeUnit): ThemeCssChunk | null => {
+    const googleFonts = getGoogleFontsUsed(theme);
+    return googleFonts.length > 0
         ? {
               id: 'googleFonts',
-              css: Array.from(googleFonts)
+              css: googleFonts
                   .sort()
                   .map((font) => {
-                      return `@import url('https://fonts.googleapis.com/css2?family=${encodeURIComponent(font)}:wght@100;200;300;400;500;600;700;800;900&display=swap');\n`;
+                      return `@import url('https://${googleFontsDomain}/css2?family=${encodeURIComponent(font)}:wght@100;200;300;400;500;600;700;800;900&display=swap');\n`;
                   })
                   .join(''),
           }
         : null;
 };
+
+const googleFontsDomain = 'fonts.googleapis.com';
 
 const resolveOnLoad = (element: HTMLStyleElement) =>
     new Promise<void>((resolve) => {

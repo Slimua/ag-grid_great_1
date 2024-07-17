@@ -1,7 +1,13 @@
 import { createGrid } from 'ag-grid-community';
 import 'ag-grid-enterprise';
 
-import { colorSchemeDarkNeutral, inputStyleUnderlined, tabStyleMaterial, themeQuartz } from './src/main';
+import { colorSchemeDarkNeutral, inputStyleUnderlined, tabStyleMaterial, themeBalham, themeQuartz } from './src/main';
+
+// themeBalham.install();
+
+// themeQuartz.install();
+
+// themeQuartz.install({ loadGoogleFonts: true });
 
 themeQuartz
     .usePart(inputStyleUnderlined)
@@ -9,10 +15,13 @@ themeQuartz
     .usePart(tabStyleMaterial)
     .usePart(inputStyleUnderlined)
     .overrideParams({
+        // type safe
         primaryColor: 'green',
         inputFocusBorder: { width: 2, color: { ref: 'primaryColor' } },
     })
     .install();
+
+// themeBalham.install();
 
 createGrid(document.querySelector<HTMLDivElement>('#app')!, {
     // Data to be displayed
