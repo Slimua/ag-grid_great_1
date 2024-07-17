@@ -12,7 +12,7 @@ import {
 } from './src/main';
 
 // 1
-// themeBalham.install();
+themeBalham.install();
 
 // 2
 // See console warning
@@ -20,18 +20,20 @@ import {
 
 // 3
 // themeQuartz.install({ loadGoogleFonts: true });
+// themeMaterial.install({ loadGoogleFonts: true });
+// NOTE: currently no themeAlpine, could create on for migration / compatibility
 
 // 4
 // themeQuartz
-//     .usePart(colorSchemeDarkNeutral)
-//     .usePart(inputStyleUnderlined)
-//     .usePart(tabStyleMaterial)
-//     .usePart(inputStyleUnderlined)
-//     .overrideParams({
-//         // type safe
-//         primaryColor: 'green',
-//         inputFocusBorder: { width: 2, color: { ref: 'primaryColor' } },
-//     })
+//     //.usePart(colorSchemeDarkNeutral)
+//     //.usePart(inputStyleUnderlined)
+//     //.usePart(tabStyleMaterial)
+//     //.usePart(inputStyleUnderlined)
+//     //.overrideParams({
+//     //    // type safe
+//     //    primaryColor: 'green',
+//     //    inputFocusBorder: { width: 2, color: { ref: 'primaryColor' } },
+//     //})
 //     .install({ loadGoogleFonts: true });
 
 // 5
@@ -51,8 +53,6 @@ import {
 //     `
 // );
 // themeQuartz.usePart(customCheckboxes).install({ loadGoogleFonts: true });
-
-themeMaterial.install({ loadGoogleFonts: true });
 
 //
 // GRID SETUP
