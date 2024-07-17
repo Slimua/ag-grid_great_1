@@ -1,13 +1,16 @@
 import { createTheme } from '../../theme-types';
+import { checkboxStyleDefault } from '../checkbox-style/checkbox-styles';
 import { colorSchemeLightCold, colorSchemeLightNeutral } from '../color-scheme/color-schemes';
 import { iconSetAlpine, iconSetMaterial, iconSetQuartzRegular } from '../icon-set/icon-sets';
 import { inputStyleBordered, inputStyleUnderlined } from '../input-style/input-styles';
 import { tabStyleMaterial, tabStyleQuartz, tabStyleRolodex } from '../tab-style/tab-styles';
 
+const createThemeWithDefaultWidgets = (name: string) => createTheme(name).usePart(checkboxStyleDefault);
+
 // prettier-ignore
 export const themeQuartz =
     /*#__PURE__*/
-    createTheme('quartz')
+    createThemeWithDefaultWidgets('quartz')
         .usePart(colorSchemeLightNeutral)
         .usePart(iconSetQuartzRegular)
         .usePart(tabStyleQuartz)
@@ -16,7 +19,7 @@ export const themeQuartz =
 // prettier-ignore
 export const themeBalham =
     /*#__PURE__*/
-    createTheme('balham')
+    createThemeWithDefaultWidgets('balham')
         .usePart(colorSchemeLightCold)
         .usePart(iconSetAlpine)
         .usePart(tabStyleRolodex)
@@ -36,8 +39,17 @@ export const themeBalham =
                 ref: 'foregroundColor',
                 mix: 0.5,
             },
-            fontFamily:
-                '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif',
+            fontFamily: [
+                '-apple-system',
+                'BlinkMacSystemFont',
+                'Segoe UI',
+                { googleFont: 'Roboto' },
+                'Oxygen-Sans',
+                'Ubuntu',
+                'Cantarell',
+                'Helvetica Neue',
+                'sans-serif'
+            ],
             fontSize: 12,
             headerFontWeight: 'bold'
         })
@@ -57,13 +69,15 @@ export const themeBalham =
 
 export const themeMaterial =
     /*#__PURE__*/
-    createTheme('material')
+    createThemeWithDefaultWidgets('material')
         .usePart(iconSetMaterial)
         .usePart(tabStyleMaterial)
         .usePart(inputStyleUnderlined)
         .overrideParams({
-            borderRadius: '0',
-            wrapperBorderRadius: '0',
+            gridSize: 9,
+            iconSize: 18,
+            borderRadius: 0,
+            wrapperBorderRadius: 0,
             wrapperBorder: false,
             sidePanelBorder: false,
             sideButtonSelectedBorder: false,
@@ -94,17 +108,10 @@ export const themeMaterial =
                 width: 2,
                 color: { ref: 'primaryColor' },
             },
+            headerFontWeight: 600,
         })
-        // TODO restore primary color, maybe through materialColorScheme
-        // .addParams({
-        //     primaryColor: '#3f51b5',
-        // })
         .addCss(
             `
-            @import "https://fonts.googleapis.com/css?family=Roboto";
-            .ag-header {
-                font-weight: 600;
-            }
             .ag-filter-toolpanel-group-level-0-header, .ag-column-drop-horizontal {
                 background-color: color-mix(in srgb, transparent, var(--ag-foreground-color) 7%);
             }

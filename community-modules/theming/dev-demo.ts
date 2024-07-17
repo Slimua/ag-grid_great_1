@@ -1,27 +1,62 @@
 import { createGrid } from 'ag-grid-community';
 import 'ag-grid-enterprise';
 
-import { colorSchemeDarkNeutral, inputStyleUnderlined, tabStyleMaterial, themeBalham, themeQuartz } from './src/main';
+import {
+    colorSchemeDarkNeutral,
+    createPart,
+    inputStyleUnderlined,
+    tabStyleMaterial,
+    themeBalham,
+    themeMaterial,
+    themeQuartz,
+} from './src/main';
 
+// 1
 // themeBalham.install();
 
+// 2
+// See console warning
 // themeQuartz.install();
 
+// 3
 // themeQuartz.install({ loadGoogleFonts: true });
 
-themeQuartz
-    .usePart(inputStyleUnderlined)
-    .usePart(colorSchemeDarkNeutral)
-    .usePart(tabStyleMaterial)
-    .usePart(inputStyleUnderlined)
-    .overrideParams({
-        // type safe
-        primaryColor: 'green',
-        inputFocusBorder: { width: 2, color: { ref: 'primaryColor' } },
-    })
-    .install();
+// 4
+// themeQuartz
+//     .usePart(colorSchemeDarkNeutral)
+//     .usePart(inputStyleUnderlined)
+//     .usePart(tabStyleMaterial)
+//     .usePart(inputStyleUnderlined)
+//     .overrideParams({
+//         // type safe
+//         primaryColor: 'green',
+//         inputFocusBorder: { width: 2, color: { ref: 'primaryColor' } },
+//     })
+//     .install({ loadGoogleFonts: true });
 
-// themeBalham.install();
+// 5
+// const customCheckboxes = createPart('checkboxStyle', 'custom').addCss(
+//     `
+//         .ag-checkbox-input-wrapper,
+//         .ag-radio-button-input-wrapper {
+//             width: 20px;
+//             height: 20px;
+
+//             & input {
+//                 display: block;
+//                 width: 20px;
+//                 height: 20px;
+//             }
+//         }
+//     `
+// );
+// themeQuartz.usePart(customCheckboxes).install({ loadGoogleFonts: true });
+
+themeMaterial.install({ loadGoogleFonts: true });
+
+//
+// GRID SETUP
+//
 
 createGrid(document.querySelector<HTMLDivElement>('#app')!, {
     // Data to be displayed

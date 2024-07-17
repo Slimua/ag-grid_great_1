@@ -186,9 +186,12 @@ const makeVariablesChunk = (theme: ThemeUnit): ThemeCssChunk => {
 const getGoogleFontsUsed = (theme: ThemeUnit): string[] => {
     const googleFonts = new Set<string>();
     for (const value of Object.values(theme.getParams())) {
-        const googleFont = value && (value as any).googleFont;
-        if (typeof googleFont === 'string') {
-            googleFonts.add(googleFont);
+        const potentialFonts: any[] = value ? (Array.isArray(value) ? value : [value]) : [];
+        for (const potentialFont of potentialFonts) {
+            const googleFont = potentialFont?.googleFont;
+            if (typeof googleFont === 'string') {
+                googleFonts.add(googleFont);
+            }
         }
     }
     return Array.from(googleFonts).sort();
