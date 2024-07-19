@@ -249,6 +249,7 @@ export class GridOptionsService extends BeanStub implements NamedBean {
         });
 
         this.validationService?.processGridOptions(this.gridOptions);
+        this.validationService?.processLegacyOptions(options);
 
         // changeSet should just include the properties that have changed.
         changeSet.properties = events.map((event) => event.type);
@@ -613,5 +614,85 @@ export class GridOptionsService extends BeanStub implements NamedBean {
 
             return id;
         };
+    }
+}
+
+/**
+ * Used to map the new selection API back onto the existing selection API.
+ *
+ * The values of the new selection grid options take precedence over the existing options.
+ *
+ * This is part of the migration path from the old API to the new API, and can be removed once
+ * the existing/"legacy" selection API is removed.
+ */
+export function backfillLegacyGridOptions(go: GridOptions): void {
+    const selectionOpts = go.selectionOptions;
+
+    function port(target: keyof GridOptions, source: any) {
+        if (go[target] !== source) {
+            go[target] = source;
+        }
+    }
+
+    if (selectionOpts?.mode === 'cell') {
+        port('suppressMultiRangeSelection', selectionOpts.suppressMultiRangeSelection);
+        port('enableRangeHandle', selectionOpts.enableRangeHandle);
+        port('enableFillHandle', !!selectionOpts.fillHandleOptions);
+        port('suppressClearOnFillReduction', selectionOpts.fillHandleOptions?.suppressClearOnFillReduction);
+        port('fillHandleDirection', selectionOpts.fillHandleOptions?.direction);
+        port('fillOperation', selectionOpts.fillHandleOptions?.setFillValue);
+    } else if (selectionOpts?.mode === 'row') {
+        port('suppressRowClickSelection', selectionOpts.suppressRowClickSelection);
+        port('suppressRowDeselection', selectionOpts.suppressRowDeselection);
+        port('rowMultiSelectWithClick', selectionOpts.enableMultiSelectWithClick);
+        port('isRowSelectable', selectionOpts.isRowSelectable);
+
+        port('rowSelection', selectionOpts.suppressMultipleRowSelection ? 'single' : 'multiple');
+
+        switch (selectionOpts.groupSelection) {
+            case 'allChildren':
+                port('groupSelectsChildren', true);
+                port('groupSelectsFiltered', undefined);
+                break;
+            case 'filteredChildren':
+                port('groupSelectsChildren', true);
+                port('groupSelectsFiltered', true);
+                break;
+            case 'none':
+                port('groupSelectsChildren', undefined);
+                port('groupSelectsFiltered', undefined);
+                break;
+            default:
+                break;
+        }
+
+        const colDefs = go.columnDefs;
+        if (colDefs && colDefs.length > 0) {
+            if (!('children' in colDefs[0])) {
+                if (selectionOpts.checkboxSelection) {
+                    // Only set checkbox selection properties on the first column
+                    if (colDefs[0].checkboxSelection !== selectionOpts.checkboxSelection.enabled) {
+                        colDefs[0].checkboxSelection = selectionOpts.checkboxSelection.enabled;
+                    }
+                    if (colDefs[0].showDisabledCheckboxes !== selectionOpts.checkboxSelection.showDisabledCheckboxes) {
+                        colDefs[0].showDisabledCheckboxes = selectionOpts.checkboxSelection.showDisabledCheckboxes;
+                    }
+                }
+
+                // Only set header checkbox selection properties on the first column
+                if (colDefs[0].headerCheckboxSelection !== selectionOpts.enableHeaderCheckbox) {
+                    colDefs[0].headerCheckboxSelection = selectionOpts.enableHeaderCheckbox;
+                }
+                if (
+                    colDefs[0].headerCheckboxSelectionCurrentPageOnly !==
+                    selectionOpts.selectAllOptions?.currentPageOnly
+                ) {
+                    colDefs[0].headerCheckboxSelectionCurrentPageOnly = selectionOpts.selectAllOptions?.currentPageOnly;
+                }
+                if (colDefs[0].headerCheckboxSelectionFilteredOnly !== selectionOpts.selectAllOptions?.filteredOnly) {
+                    colDefs[0].headerCheckboxSelectionFilteredOnly = selectionOpts.selectAllOptions?.filteredOnly;
+                }
+            }
+        }
     }
 }
