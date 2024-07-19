@@ -5,7 +5,7 @@ import type {
     IHeaderCellComp,
     UserCompDetails,
 } from '@ag-grid-community/core';
-import { CssClassManager, _removeAriaSort, _setAriaSort } from '@ag-grid-community/core';
+import { CssClassManager, EmptyBean, _removeAriaSort, _setAriaSort } from '@ag-grid-community/core';
 import React, { memo, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
 import { BeansContext } from '../beansContext';
@@ -24,37 +24,42 @@ const HeaderCellComp = (props: { ctrl: HeaderCellCtrl }) => {
     const eResize = useRef<HTMLDivElement>(null);
     const eHeaderCompWrapper = useRef<HTMLDivElement>(null);
     const userCompRef = useRef<IHeader>();
+    const compBean = useRef<EmptyBean>();
 
     const cssClassManager = useRef<CssClassManager>();
     if (isAlive && !cssClassManager.current) {
         cssClassManager.current = new CssClassManager(() => eGui.current);
     }
-    const setRef = useCallback((e: HTMLDivElement) => {
-        eGui.current = e;
-        if (!eGui.current || !isAlive) {
+
+    const compProxy = useRef<IHeaderCellComp>({
+        setWidth: (width: string) => {
+            if (eGui.current) {
+                eGui.current.style.width = width;
+            }
+        },
+        addOrRemoveCssClass: (name: string, on: boolean) => cssClassManager.current!.addOrRemoveCssClass(name, on),
+        setAriaSort: (sort?: ColumnSortState) => {
+            if (eGui.current) {
+                sort ? _setAriaSort(eGui.current, sort) : _removeAriaSort(eGui.current);
+            }
+        },
+        setUserCompDetails: (compDetails: UserCompDetails) => setUserCompDetails(compDetails),
+        getUserCompInstance: () => userCompRef.current || undefined,
+    });
+
+    const setRef = useCallback((eRef: HTMLDivElement | null) => {
+        eGui.current = eRef;
+        compBean.current = eRef ? context.createBean(new EmptyBean()) : context.destroyBean(compBean.current);
+
+        if (!eRef || !ctrl.isAlive()) {
             return;
         }
 
-        const compProxy: IHeaderCellComp = {
-            setWidth: (width: string) => {
-                if (eGui.current) {
-                    eGui.current.style.width = width;
-                }
-            },
-            addOrRemoveCssClass: (name: string, on: boolean) => cssClassManager.current!.addOrRemoveCssClass(name, on),
-            setAriaSort: (sort?: ColumnSortState) => {
-                if (eGui.current) {
-                    sort ? _setAriaSort(eGui.current, sort) : _removeAriaSort(eGui.current);
-                }
-            },
-            setUserCompDetails: (compDetails: UserCompDetails) => setUserCompDetails(compDetails),
-            getUserCompInstance: () => userCompRef.current || undefined,
-        };
-
-        ctrl.setComp(compProxy, eGui.current, eResize.current!, eHeaderCompWrapper.current!);
+        ctrl.setComp(compProxy.current, eRef, eResize.current!, eHeaderCompWrapper.current!, compBean.current!);
 
         const selectAllGui = ctrl.getSelectAllGui();
         eResize.current?.insertAdjacentElement('afterend', selectAllGui);
+        compBean.current!.addDestroyFunc(() => selectAllGui.remove());
     }, []);
 
     // js comps

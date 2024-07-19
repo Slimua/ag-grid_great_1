@@ -30,7 +30,7 @@ export class OverlayService extends BeanStub implements NamedBean {
         this.columnModel = beans.columnModel;
     }
 
-    private overlayWrapperComp: OverlayWrapperComponent;
+    private overlayWrapperComp: OverlayWrapperComponent | undefined;
 
     public postConstruct(): void {
         this.isClientSide = this.gos.isRowModelType('clientSide');
@@ -49,23 +49,23 @@ export class OverlayService extends BeanStub implements NamedBean {
         this.addManagedPropertyListener('loading', updateOverlayVisibility);
     }
 
-    public registerOverlayWrapperComp(overlayWrapperComp: OverlayWrapperComponent): void {
+    public setOverlayWrapperComp(overlayWrapperComp: OverlayWrapperComponent | undefined): void {
         this.overlayWrapperComp = overlayWrapperComp;
         this.updateOverlayVisibility();
     }
 
     /** Returns true if the overlay is visible. */
     public isVisible(): boolean {
-        return this.state !== OverlayServiceState.Hidden;
+        return this.state !== OverlayServiceState.Hidden && !!this.overlayWrapperComp;
     }
 
     /** Returns true if the overlay is visible and is exclusive (popup over the grid) */
     public isExclusive(): boolean {
-        return this.state === OverlayServiceState.Loading;
+        return this.state === OverlayServiceState.Loading && !!this.overlayWrapperComp;
     }
 
     /** Gets the overlay wrapper component */
-    public getOverlayWrapper(): OverlayWrapperComponent {
+    public getOverlayWrapper(): OverlayWrapperComponent | undefined {
         return this.overlayWrapperComp;
     }
 
@@ -101,6 +101,11 @@ export class OverlayService extends BeanStub implements NamedBean {
     }
 
     private updateOverlayVisibility(): void {
+        if (!this.overlayWrapperComp) {
+            this.state = OverlayServiceState.Hidden;
+            return;
+        }
+
         let loading = this.gos.get('loading');
 
         if (this.showInitialOverlay && loading === undefined && !this.gos.get('suppressLoadingOverlay')) {
@@ -127,6 +132,9 @@ export class OverlayService extends BeanStub implements NamedBean {
     }
 
     private doShowLoadingOverlay(): void {
+        if (!this.overlayWrapperComp) {
+            return;
+        }
         this.state = OverlayServiceState.Loading;
         this.showOverlay(
             this.userComponentFactory.getLoadingOverlayCompDetails({}),
@@ -136,6 +144,9 @@ export class OverlayService extends BeanStub implements NamedBean {
     }
 
     private doShowNoRowsOverlay(): void {
+        if (!this.overlayWrapperComp) {
+            return;
+        }
         this.state = OverlayServiceState.NoRows;
         this.showOverlay(
             this.userComponentFactory.getNoRowsOverlayCompDetails({}),
@@ -145,12 +156,14 @@ export class OverlayService extends BeanStub implements NamedBean {
     }
 
     private doHideOverlay(): void {
+        if (!this.overlayWrapperComp) {
+            return;
+        }
         this.state = OverlayServiceState.Hidden;
         this.overlayWrapperComp.hideOverlay();
     }
-
     private showOverlay(compDetails: UserCompDetails, wrapperCssClass: string, gridOption: keyof GridOptions): void {
         const promise = compDetails.newAgStackInstance();
-        this.overlayWrapperComp.showOverlay(promise, wrapperCssClass, this.isExclusive(), gridOption);
+        this.overlayWrapperComp?.showOverlay(promise, wrapperCssClass, this.isExclusive(), gridOption);
     }
 }

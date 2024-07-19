@@ -4,7 +4,7 @@ import type {
     IHeaderFilterCellComp,
     UserCompDetails,
 } from 'ag-grid-community';
-import { AgPromise } from 'ag-grid-community';
+import { AgPromise, EmptyBean } from 'ag-grid-community';
 import React, { memo, useCallback, useContext, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
 import { CustomContext } from '../../shared/customComp/customContext';
@@ -29,6 +29,7 @@ const HeaderFilterCellComp = (props: { ctrl: HeaderFilterCellCtrl }) => {
     const [userCompDetails, setUserCompDetails] = useState<UserCompDetails | null>();
     const [, setRenderKey] = useState<number>(1);
 
+    const compBean = useRef<EmptyBean>();
     const eGui = useRef<HTMLDivElement | null>(null);
     const eFloatingFilterBody = useRef<HTMLDivElement>(null);
     const eButtonWrapper = useRef<HTMLDivElement>(null);
@@ -36,6 +37,23 @@ const HeaderFilterCellComp = (props: { ctrl: HeaderFilterCellCtrl }) => {
 
     const userCompResolve = useRef<(value: IFloatingFilter) => void>();
     const userCompPromise = useRef<AgPromise<IFloatingFilter>>();
+
+    const compProxy = useRef<IHeaderFilterCellComp>({
+        addOrRemoveCssClass: (name, on) => setCssClasses((prev) => prev.setClass(name, on)),
+        addOrRemoveBodyCssClass: (name, on) => setBodyCssClasses((prev) => prev.setClass(name, on)),
+        setButtonWrapperDisplayed: (displayed) => {
+            setButtonWrapperCssClasses((prev) => prev.setClass('ag-hidden', !displayed));
+            setButtonWrapperAriaHidden(!displayed ? 'true' : 'false');
+        },
+        setWidth: (width) => {
+            if (eGui.current) {
+                eGui.current.style.width = width;
+            }
+        },
+        setCompDetails: (compDetails) => setUserCompDetails(compDetails),
+        getFloatingFilterComp: () => (userCompPromise.current ? userCompPromise.current : null),
+        setMenuIcon: (eIcon) => eButtonShowMainFilter.current?.appendChild(eIcon),
+    });
 
     const userCompRef = (value: IFloatingFilter) => {
         // We skip when it's un-setting
@@ -48,9 +66,11 @@ const HeaderFilterCellComp = (props: { ctrl: HeaderFilterCellCtrl }) => {
 
     const { ctrl } = props;
 
-    const setRef = useCallback((e: HTMLDivElement) => {
-        eGui.current = e;
-        if (!eGui.current) {
+    const setRef = useCallback((eRef: HTMLDivElement | null) => {
+        eGui.current = eRef;
+        compBean.current = eRef ? context.createBean(new EmptyBean()) : context.destroyBean(compBean.current);
+
+        if (!eRef || !props.ctrl.isAlive()) {
             return;
         }
 
@@ -58,24 +78,13 @@ const HeaderFilterCellComp = (props: { ctrl: HeaderFilterCellCtrl }) => {
             userCompResolve.current = resolve;
         });
 
-        const compProxy: IHeaderFilterCellComp = {
-            addOrRemoveCssClass: (name, on) => setCssClasses((prev) => prev.setClass(name, on)),
-            addOrRemoveBodyCssClass: (name, on) => setBodyCssClasses((prev) => prev.setClass(name, on)),
-            setButtonWrapperDisplayed: (displayed) => {
-                setButtonWrapperCssClasses((prev) => prev.setClass('ag-hidden', !displayed));
-                setButtonWrapperAriaHidden(!displayed ? 'true' : 'false');
-            },
-            setWidth: (width) => {
-                if (eGui.current) {
-                    eGui.current.style.width = width;
-                }
-            },
-            setCompDetails: (compDetails) => setUserCompDetails(compDetails),
-            getFloatingFilterComp: () => (userCompPromise.current ? userCompPromise.current : null),
-            setMenuIcon: (eIcon) => eButtonShowMainFilter.current?.appendChild(eIcon),
-        };
-
-        ctrl.setComp(compProxy, eGui.current, eButtonShowMainFilter.current!, eFloatingFilterBody.current!);
+        ctrl.setComp(
+            compProxy.current,
+            eRef,
+            eButtonShowMainFilter.current!,
+            eFloatingFilterBody.current!,
+            compBean.current!
+        );
     }, []);
 
     // js comps

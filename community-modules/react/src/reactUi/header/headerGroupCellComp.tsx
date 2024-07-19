@@ -4,6 +4,7 @@ import type {
     IHeaderGroupComp,
     UserCompDetails,
 } from '@ag-grid-community/core';
+import { EmptyBean } from '@ag-grid-community/core';
 import React, { memo, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
 import { BeansContext } from '../beansContext';
@@ -21,32 +22,35 @@ const HeaderGroupCellComp = (props: { ctrl: HeaderGroupCellCtrl }) => {
     const [userCompDetails, setUserCompDetails] = useState<UserCompDetails>();
     const colId = useMemo(() => ctrl.getColId(), []);
 
+    const compBean = useRef<EmptyBean>();
     const eGui = useRef<HTMLDivElement | null>(null);
     const eResize = useRef<HTMLDivElement>(null);
     const userCompRef = useRef<IHeaderGroupComp>();
+    const compProxy = useRef<IHeaderGroupCellComp>({
+        setWidth: (width: string) => {
+            if (eGui.current) {
+                eGui.current.style.width = width;
+            }
+        },
+        addOrRemoveCssClass: (name: string, on: boolean) => setCssClasses((prev) => prev.setClass(name, on)),
+        setUserCompDetails: (compDetails: UserCompDetails) => setUserCompDetails(compDetails),
+        setResizableDisplayed: (displayed: boolean) => {
+            setResizableCssClasses((prev) => prev.setClass('ag-hidden', !displayed));
+            setResizableAriaHidden(!displayed ? 'true' : 'false');
+        },
+        setAriaExpanded: (expanded: 'true' | 'false' | undefined) => setAriaExpanded(expanded),
+        getUserCompInstance: () => userCompRef.current || undefined,
+    });
 
-    const setRef = useCallback((e: HTMLDivElement) => {
-        eGui.current = e;
-        if (!eGui.current) {
+    const setRef = useCallback((eRef: HTMLDivElement | null) => {
+        eGui.current = eRef;
+        compBean.current = eRef ? context.createBean(new EmptyBean()) : context.destroyBean(compBean.current);
+
+        if (!eRef || !props.ctrl.isAlive()) {
             return;
         }
-        const compProxy: IHeaderGroupCellComp = {
-            setWidth: (width: string) => {
-                if (eGui.current) {
-                    eGui.current.style.width = width;
-                }
-            },
-            addOrRemoveCssClass: (name: string, on: boolean) => setCssClasses((prev) => prev.setClass(name, on)),
-            setUserCompDetails: (compDetails: UserCompDetails) => setUserCompDetails(compDetails),
-            setResizableDisplayed: (displayed: boolean) => {
-                setResizableCssClasses((prev) => prev.setClass('ag-hidden', !displayed));
-                setResizableAriaHidden(!displayed ? 'true' : 'false');
-            },
-            setAriaExpanded: (expanded: 'true' | 'false' | undefined) => setAriaExpanded(expanded),
-            getUserCompInstance: () => userCompRef.current || undefined,
-        };
 
-        ctrl.setComp(compProxy, eGui.current, eResize.current!);
+        ctrl.setComp(compProxy.current, eRef, eResize.current!, compBean.current!);
     }, []);
 
     // js comps

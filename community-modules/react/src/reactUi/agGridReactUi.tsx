@@ -60,6 +60,7 @@ export const AgGridReactUi = <TData,>(props: AgGridReactProps<TData>) => {
     const whenReadyFuncs = useRef<(() => void)[]>([]);
     const prevProps = useRef<AgGridReactProps<any>>(props);
     const frameworkOverridesRef = useRef<ReactFrameworkOverrides>();
+    const gridIdRef = useRef<string | undefined>();
 
     const ready = useRef<boolean>(false);
 
@@ -68,12 +69,11 @@ export const AgGridReactUi = <TData,>(props: AgGridReactProps<TData>) => {
     // Hook to enable Portals to be displayed via the PortalManager
     const [, setPortalRefresher] = useState(0);
 
-    const setRef = useCallback((e: HTMLDivElement) => {
-        eGui.current = e;
-        if (!eGui.current) {
+    const setRef = useCallback((eRef: HTMLDivElement | null) => {
+        eGui.current = eRef;
+        if (!eRef) {
             destroyFuncs.current.forEach((f) => f());
             destroyFuncs.current.length = 0;
-
             return;
         }
 
@@ -132,16 +132,14 @@ export const AgGridReactUi = <TData,>(props: AgGridReactProps<TData>) => {
 
             // because React is Async, we need to wait for the UI to be initialised before exposing the API's
             const ctrlsService = context.getBean('ctrlsService');
-            ctrlsService.whenReady(() => {
+            ctrlsService.whenReady(ctrlsService, () => {
                 if (context.isDestroyed()) {
                     return;
                 }
 
                 const api = apiRef.current;
                 if (api) {
-                    if (props.setGridApi) {
-                        props.setGridApi(api);
-                    }
+                    props.setGridApi?.(api);
                 }
             });
         };
@@ -151,7 +149,7 @@ export const AgGridReactUi = <TData,>(props: AgGridReactProps<TData>) => {
         // and data. this is because GridCoreCreator sets these between calling createUiCallback and acceptChangesCallback
         const acceptChangesCallback = (context: Context) => {
             const ctrlsService = context.getBean('ctrlsService');
-            ctrlsService.whenReady(() => {
+            ctrlsService.whenReady(ctrlsService, () => {
                 whenReadyFuncs.current.forEach((f) => f());
                 whenReadyFuncs.current.length = 0;
                 ready.current = true;
@@ -159,13 +157,16 @@ export const AgGridReactUi = <TData,>(props: AgGridReactProps<TData>) => {
         };
 
         const gridCoreCreator = new GridCoreCreator();
+        // We ensure that the gridId is stable even in StrictMode
+        mergedGridOps.gridId ??= gridIdRef.current;
         apiRef.current = gridCoreCreator.create(
-            eGui.current,
+            eRef,
             mergedGridOps,
             createUiCallback,
             acceptChangesCallback,
             gridParams
         );
+        gridIdRef.current = apiRef.current.getGridId();
     }, []);
 
     const style = useMemo(() => {
@@ -291,6 +292,15 @@ const DetailCellRenderer = forwardRef((props: IDetailCellRendererParams, ref: an
     const topClassName = useMemo(() => cssClasses.toString() + ' ag-details-row', [cssClasses]);
     const gridClassName = useMemo(() => gridCssClasses.toString() + ' ag-details-grid', [gridCssClasses]);
 
+    const compProxy = useRef<IDetailCellRenderer>({
+        addOrRemoveCssClass: (name: string, on: boolean) => setCssClasses((prev) => prev.setClass(name, on)),
+        addOrRemoveDetailGridCssClass: (name: string, on: boolean) =>
+            setGridCssClasses((prev) => prev.setClass(name, on)),
+        setDetailGrid: (gridOptions) => setDetailGridOptions(gridOptions),
+        setRowData: (rowData) => setDetailRowData(rowData),
+        getGui: () => eGuiRef.current!,
+    });
+
     if (ref) {
         useImperativeHandle(ref, () => ({
             refresh() {
@@ -305,25 +315,14 @@ const DetailCellRenderer = forwardRef((props: IDetailCellRendererParams, ref: an
         );
     }
 
-    const setRef = useCallback((e: HTMLDivElement) => {
-        eGuiRef.current = e;
+    const setRef = useCallback((eRef: HTMLDivElement | null) => {
+        eGuiRef.current = eRef;
 
         if (!eGuiRef.current) {
-            context.destroyBean(ctrlRef.current);
-            if (resizeObserverDestroyFunc.current) {
-                resizeObserverDestroyFunc.current();
-            }
+            ctrlRef.current = context.destroyBean(ctrlRef.current);
+            resizeObserverDestroyFunc.current?.();
             return;
         }
-
-        const compProxy: IDetailCellRenderer = {
-            addOrRemoveCssClass: (name: string, on: boolean) => setCssClasses((prev) => prev.setClass(name, on)),
-            addOrRemoveDetailGridCssClass: (name: string, on: boolean) =>
-                setGridCssClasses((prev) => prev.setClass(name, on)),
-            setDetailGrid: (gridOptions) => setDetailGridOptions(gridOptions),
-            setRowData: (rowData) => setDetailRowData(rowData),
-            getGui: () => eGuiRef.current!,
-        };
 
         const ctrl = ctrlsFactory.getInstance('detailCellRenderer') as IDetailCellRendererCtrl;
         if (!ctrl) {
@@ -331,7 +330,7 @@ const DetailCellRenderer = forwardRef((props: IDetailCellRendererParams, ref: an
         } // should never happen, means master/detail module not loaded
         context.createBean(ctrl);
 
-        ctrl.init(compProxy, props);
+        ctrl.init(compProxy.current, props);
 
         ctrlRef.current = ctrl;
 

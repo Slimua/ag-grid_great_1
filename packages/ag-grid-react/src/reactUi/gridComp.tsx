@@ -28,7 +28,7 @@ const GridComp = ({ context }: GridCompProps) => {
     const [initialised, setInitialised] = useState<boolean>(false);
     const [tabGuardReady, setTabGuardReady] = useState<any>();
 
-    const gridCtrlRef = useRef<GridCtrl | null>(null);
+    const gridCtrlRef = useRef<GridCtrl>();
     const eRootWrapperRef = useRef<HTMLDivElement | null>(null);
     const tabGuardRef = useRef<TabGuardCompCallback>();
     // eGridBodyParent is state as we use it in render
@@ -37,6 +37,34 @@ const GridComp = ({ context }: GridCompProps) => {
     const focusInnerElementRef = useRef<(fromBottom?: boolean) => void>(() => undefined);
     const paginationCompRef = useRef<JsTabGuardComp | undefined>();
     const focusableContainersRef = useRef<Component[]>([]);
+
+    const compProxy = useRef<IGridComp>({
+        destroyGridUi: () => {}, // do nothing, as framework users destroy grid by removing the comp
+        setRtlClass: setRtlClass,
+        forceFocusOutOfContainer: (up?: boolean) => {
+            if (!up && paginationCompRef.current?.isDisplayed()) {
+                paginationCompRef.current.forceFocusOutOfContainer(up);
+                return;
+            }
+            tabGuardRef.current?.forceFocusOutOfContainer(up);
+        },
+        updateLayoutClasses: setLayoutClass,
+        getFocusableContainers: () => {
+            const comps: FocusableContainer[] = [];
+            const gridBodyCompEl = eRootWrapperRef.current?.querySelector('.ag-root');
+            if (gridBodyCompEl) {
+                comps.push({ getGui: () => gridBodyCompEl as HTMLElement });
+            }
+            focusableContainersRef.current.forEach((comp) => {
+                if (comp.isDisplayed()) {
+                    comps.push(comp);
+                }
+            });
+            return comps;
+        },
+        setCursor,
+        setUserSelect,
+    });
 
     const onTabKeyDown = useCallback(() => undefined, []);
 
@@ -49,64 +77,29 @@ const GridComp = ({ context }: GridCompProps) => {
 
     useReactCommentEffect(' AG Grid ', eRootWrapperRef);
 
-    const setRef = useCallback((e: HTMLDivElement) => {
-        eRootWrapperRef.current = e;
+    const setRef = useCallback((eGui: HTMLDivElement | null) => {
+        eRootWrapperRef.current = eGui;
+        gridCtrlRef.current = eGui ? context.createBean(new GridCtrl()) : context.destroyBean(gridCtrlRef.current);
 
-        if (!eRootWrapperRef.current) {
-            context.destroyBean(gridCtrlRef.current);
-            gridCtrlRef.current = null;
+        if (!eGui || context.isDestroyed()) {
             return;
         }
 
-        if (context.isDestroyed()) {
-            return;
-        }
-
-        gridCtrlRef.current = context.createBean(new GridCtrl());
-        const gridCtrl = gridCtrlRef.current;
-
+        const gridCtrl = gridCtrlRef.current!;
         focusInnerElementRef.current = gridCtrl.focusInnerElement.bind(gridCtrl);
-
-        const compProxy: IGridComp = {
-            destroyGridUi: () => {}, // do nothing, as framework users destroy grid by removing the comp
-            setRtlClass: setRtlClass,
-            forceFocusOutOfContainer: (up?: boolean) => {
-                if (!up && paginationCompRef.current?.isDisplayed()) {
-                    paginationCompRef.current.forceFocusOutOfContainer(up);
-                    return;
-                }
-                tabGuardRef.current?.forceFocusOutOfContainer(up);
-            },
-            updateLayoutClasses: setLayoutClass,
-            getFocusableContainers: () => {
-                const comps: FocusableContainer[] = [];
-                const gridBodyCompEl = eRootWrapperRef.current?.querySelector('.ag-root');
-                if (gridBodyCompEl) {
-                    comps.push({ getGui: () => gridBodyCompEl as HTMLElement });
-                }
-                focusableContainersRef.current.forEach((comp) => {
-                    if (comp.isDisplayed()) {
-                        comps.push(comp);
-                    }
-                });
-                return comps;
-            },
-            setCursor,
-            setUserSelect,
-        };
-
-        gridCtrl.setComp(compProxy, eRootWrapperRef.current, eRootWrapperRef.current);
+        gridCtrl.setComp(compProxy.current, eGui, eGui);
 
         setInitialised(true);
     }, []);
 
     // initialise the extra components
     useEffect(() => {
-        if (!tabGuardReady || !beans || !gridCtrlRef.current || !eGridBodyParent || !eRootWrapperRef.current) {
+        const gridCtrl = gridCtrlRef.current;
+        const eRootWrapper = eRootWrapperRef.current;
+        if (!tabGuardReady || !beans || !gridCtrl || !eGridBodyParent || !eRootWrapper) {
             return;
         }
 
-        const gridCtrl = gridCtrlRef.current;
         const beansToDestroy: any[] = [];
 
         // these components are optional, so we check if they are registered before creating them
@@ -118,7 +111,6 @@ const GridComp = ({ context }: GridCompProps) => {
             gridHeaderDropZonesSelector,
         } = gridCtrl.getOptionalSelectors();
         const additionalEls: HTMLElement[] = [];
-        const eRootWrapper = eRootWrapperRef.current;
 
         if (gridHeaderDropZonesSelector) {
             const headerDropZonesComp = context.createBean(new gridHeaderDropZonesSelector.component());

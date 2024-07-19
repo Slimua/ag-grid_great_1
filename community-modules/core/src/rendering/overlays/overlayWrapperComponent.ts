@@ -48,7 +48,7 @@ export class OverlayWrapperComponent extends Component implements LayoutView {
         this.createManagedBean(new LayoutFeature(this));
         this.setDisplayed(false, { skipAriaHidden: true });
 
-        this.overlayService.registerOverlayWrapperComp(this);
+        this.overlayService.setOverlayWrapperComp(this);
     }
 
     private setWrapperTypeClass(overlayWrapperCssClass: string): void {
@@ -159,6 +159,7 @@ export class OverlayWrapperComponent extends Component implements LayoutView {
     public override destroy(): void {
         this.elToFocusAfter = null;
         this.destroyActiveOverlay();
+        this.overlayService.setOverlayWrapperComp(undefined);
         super.destroy();
     }
 }

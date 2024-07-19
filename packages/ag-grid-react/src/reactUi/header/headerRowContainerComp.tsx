@@ -12,48 +12,49 @@ const HeaderRowContainerComp = (props: { pinned: ColumnPinnedType }) => {
     const { context } = useContext(BeansContext);
     const eGui = useRef<HTMLDivElement | null>(null);
     const eCenterContainer = useRef<HTMLDivElement>(null);
-    const headerRowCtrlRef = useRef<HeaderRowContainerCtrl | null>(null);
+    const headerRowCtrlRef = useRef<HeaderRowContainerCtrl>();
 
     const pinnedLeft = props.pinned === 'left';
     const pinnedRight = props.pinned === 'right';
     const centre = !pinnedLeft && !pinnedRight;
 
-    const setRef = useCallback((e: HTMLDivElement) => {
-        eGui.current = e;
-        if (!eGui.current) {
-            context.destroyBean(headerRowCtrlRef.current);
-            headerRowCtrlRef.current = null;
+    const compProxy = useRef<IHeaderRowContainerComp>({
+        setDisplayed,
+        setCtrls: (ctrls) => setHeaderRowCtrls(ctrls),
+
+        // centre only
+        setCenterWidth: (width) => {
+            if (eCenterContainer.current) {
+                eCenterContainer.current.style.width = width;
+            }
+        },
+        setViewportScrollLeft: (left) => {
+            if (eGui.current) {
+                eGui.current.scrollLeft = left;
+            }
+        },
+
+        // pinned only
+        setPinnedContainerWidth: (width) => {
+            if (eGui.current) {
+                eGui.current.style.width = width;
+                eGui.current.style.minWidth = width;
+                eGui.current.style.maxWidth = width;
+            }
+        },
+    });
+
+    const setRef = useCallback((eRef: HTMLDivElement | null) => {
+        eGui.current = eRef;
+        headerRowCtrlRef.current = eRef
+            ? context.createBean(new HeaderRowContainerCtrl(props.pinned))
+            : context.destroyBean(headerRowCtrlRef.current);
+
+        if (!eRef) {
             return;
         }
 
-        const compProxy: IHeaderRowContainerComp = {
-            setDisplayed,
-            setCtrls: (ctrls) => setHeaderRowCtrls(ctrls),
-
-            // centre only
-            setCenterWidth: (width) => {
-                if (eCenterContainer.current) {
-                    eCenterContainer.current.style.width = width;
-                }
-            },
-            setViewportScrollLeft: (left) => {
-                if (eGui.current) {
-                    eGui.current.scrollLeft = left;
-                }
-            },
-
-            // pinned only
-            setPinnedContainerWidth: (width) => {
-                if (eGui.current) {
-                    eGui.current.style.width = width;
-                    eGui.current.style.minWidth = width;
-                    eGui.current.style.maxWidth = width;
-                }
-            },
-        };
-
-        headerRowCtrlRef.current = context.createBean(new HeaderRowContainerCtrl(props.pinned));
-        headerRowCtrlRef.current.setComp(compProxy, eGui.current);
+        headerRowCtrlRef.current?.setComp(compProxy.current, eRef);
     }, []);
 
     const className = !displayed ? 'ag-hidden' : '';

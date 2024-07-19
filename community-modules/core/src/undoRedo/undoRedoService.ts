@@ -7,13 +7,9 @@ import type { AgColumn } from '../entities/agColumn';
 import type { CellPosition, CellPositionUtils } from '../entities/cellPositionUtils';
 import type { RowPosition, RowPositionUtils } from '../entities/rowPositionUtils';
 import type {
-    CellEditingStartedEvent,
-    CellEditingStoppedEvent,
     CellValueChangedEvent,
-    FillEndEvent,
     RedoEndedEvent,
     RedoStartedEvent,
-    RowEditingStartedEvent,
     UndoEndedEvent,
     UndoStartedEvent,
 } from '../events';
@@ -92,7 +88,7 @@ export class UndoRedoService extends BeanStub implements NamedBean {
             rowDragEnd: listener,
         });
 
-        this.ctrlsService.whenReady((p) => {
+        this.ctrlsService.whenReady(this, (p) => {
             this.gridBodyCtrl = p.gridBodyCtrl;
         });
     }

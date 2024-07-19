@@ -1,5 +1,5 @@
 import type { UserCompDetails } from '../../components/framework/userComponentFactory';
-import { BeanStub } from '../../context/beanStub';
+import { BeanStub, setupCompBean } from '../../context/beanStub';
 import type { BeanCollection } from '../../context/context';
 import type { AgColumn } from '../../entities/agColumn';
 import type { CellPosition } from '../../entities/cellPositionUtils';
@@ -64,6 +64,7 @@ interface RowGui {
     rowComp: IRowComp;
     element: HTMLElement;
     containerType: RowContainerType;
+    compBean: BeanStub;
 }
 
 interface CellCtrlListAndMap {
@@ -118,7 +119,7 @@ export class RowCtrl extends BeanStub<RowCtrlEvent> {
     };
 
     private rowDragComps: RowDragComp[] = [];
-
+    private compBeanCleanup?: () => void;
     private readonly useAnimationFrameForCreate: boolean;
 
     private paginationPage: number;
@@ -217,10 +218,20 @@ export class RowCtrl extends BeanStub<RowCtrlEvent> {
         }
     }
 
-    public setComp(rowComp: IRowComp, element: HTMLElement, containerType: RowContainerType): void {
-        const gui: RowGui = { rowComp, element, containerType };
+    public setComp(
+        rowComp: IRowComp,
+        element: HTMLElement,
+        containerType: RowContainerType,
+        compBean: BeanStub<any> | undefined
+    ): void {
+        [compBean, this.compBeanCleanup] = setupCompBean(this, this.beans.context, compBean);
+        const gui: RowGui = { rowComp, element, containerType, compBean };
         this.allRowGuis.push(gui);
         this.updateGui(containerType, gui);
+        compBean.addDestroyFunc(() => {
+            this.updateGui(containerType, undefined);
+            this.allRowGuis = this.allRowGuis.filter((gui) => gui.containerType !== containerType);
+        });
 
         this.initialiseRowComp(gui);
 
@@ -231,11 +242,6 @@ export class RowCtrl extends BeanStub<RowCtrlEvent> {
             // us to be certain that all rendering is done by the time the event fires.
             this.beans.rowRenderer.dispatchFirstDataRenderedEvent();
         }
-    }
-
-    public unsetComp(containerType: RowContainerType): void {
-        this.allRowGuis = this.allRowGuis.filter((rowGui) => rowGui.containerType !== containerType);
-        this.updateGui(containerType, undefined);
     }
 
     public isCacheable(): boolean {
@@ -270,7 +276,7 @@ export class RowCtrl extends BeanStub<RowCtrlEvent> {
         const initialRowClasses = this.getInitialRowClasses(gui.containerType);
         initialRowClasses.forEach((name) => comp.addOrRemoveCssClass(name, true));
 
-        this.executeSlideAndFadeAnimations(gui);
+        this.executeSlideAndFadeAnimations(gui); // TODO do these need canceling??
 
         if (this.rowNode.group) {
             _setAriaExpanded(gui.element, this.rowNode.expanded == true);
@@ -281,18 +287,18 @@ export class RowCtrl extends BeanStub<RowCtrlEvent> {
 
         // DOM DATA
         gos.setDomData(gui.element, RowCtrl.DOM_DATA_KEY_ROW_CTRL, this);
-        this.addDestroyFunc(() => gos.setDomData(gui.element, RowCtrl.DOM_DATA_KEY_ROW_CTRL, null));
+        gui.compBean.addDestroyFunc(() => gos.setDomData(gui.element, RowCtrl.DOM_DATA_KEY_ROW_CTRL, null));
 
         // adding hover functionality adds listener to this row, so we
         // do it lazily in an animation frame
         if (this.useAnimationFrameForCreate) {
             this.beans.animationFrameService.createTask(
-                this.addHoverFunctionality.bind(this, gui.element),
+                this.addHoverFunctionality.bind(this, gui),
                 this.rowNode.rowIndex!,
                 'createTasksP2'
             );
         } else {
-            this.addHoverFunctionality(gui.element);
+            this.addHoverFunctionality(gui);
         }
 
         if (this.isFullWidth()) {
@@ -378,6 +384,10 @@ export class RowCtrl extends BeanStub<RowCtrlEvent> {
         );
         const rowDragBean = this.createBean(rowDragComp, this.beans.context);
         this.rowDragComps.push(rowDragBean);
+        gui.compBean.addDestroyFunc(() => {
+            this.rowDragComps = this.rowDragComps.filter((r) => r !== rowDragBean);
+            this.destroyBean(rowDragBean, this.beans.context);
+        });
     }
 
     private setupFullWidth(gui: RowGui): void {
@@ -625,9 +635,7 @@ export class RowCtrl extends BeanStub<RowCtrlEvent> {
         const listener = () => {
             gui.rowComp.setDomOrder(this.getDomOrder());
         };
-
-        this.addManagedPropertyListener('domLayout', listener);
-        this.addManagedPropertyListener('ensureDomOrder', listener);
+        gui.compBean.addManagedPropertyListeners(['domLayout', 'ensureDomOrder'], listener);
     }
 
     private setAnimateFlags(animateIn: boolean): void {
@@ -1214,7 +1222,7 @@ export class RowCtrl extends BeanStub<RowCtrlEvent> {
         if (!this.isFullWidth()) {
             return;
         }
-
+        // TODO does this get run twice or is it triggered from somewhere else?
         const rowDragComp = new RowDragComp(
             () => value,
             this.rowNode,
@@ -1425,7 +1433,7 @@ export class RowCtrl extends BeanStub<RowCtrlEvent> {
         this.beans.ariaAnnouncementService.announceValue(label);
     }
 
-    public addHoverFunctionality(eRow: HTMLElement): void {
+    public addHoverFunctionality(gui: RowGui): void {
         // because we use animation frames to do this, it's possible the row no longer exists
         // by the time we get to add it
         if (!this.active) {
@@ -1441,14 +1449,15 @@ export class RowCtrl extends BeanStub<RowCtrlEvent> {
         // all are listening for event on the row node.
 
         const { rowNode, beans, gos } = this;
+        const eRow = gui.element;
         // step 1 - add listener, to set flag on row node
-        this.addManagedListeners(eRow, {
+        gui.compBean.addManagedListeners(eRow, {
             mouseenter: () => rowNode.onMouseEnter(),
             mouseleave: () => rowNode.onMouseLeave(),
         });
 
         // step 2 - listen for changes on row node (which any eRow can trigger)
-        this.addManagedListeners(rowNode, {
+        gui.compBean.addManagedListeners(rowNode, {
             mouseEnter: () => {
                 // if hover turned off, we don't add the class. we do this here so that if the application
                 // toggles this property mid way, we remove the hover form the last row, but we stop
@@ -1563,6 +1572,7 @@ export class RowCtrl extends BeanStub<RowCtrlEvent> {
 
     public destroySecondPass(): void {
         this.allRowGuis.length = 0;
+        this.compBeanCleanup?.();
 
         // if we are editing, destroying the row will stop editing
         this.stopEditing();
